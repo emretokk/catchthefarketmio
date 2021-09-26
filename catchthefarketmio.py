@@ -1,5 +1,8 @@
 import pygame as pg
 import os
+import random
+
+pg.init()
 
 # RESULATION,WINDOW SETTINGS
 FPS = 120
@@ -31,8 +34,8 @@ BLACK = (0,0,0)
 MONOKAI_BACKGROUND = (39, 40, 34)
 
 class Cherry():
-	def __init__(self,img):
-		self.rect = pg.Rect(0, 0, 64, 100)
+	def __init__(self,img,spawn_x):
+		self.rect = pg.Rect(spawn_x, 0, 64, 100)
 		self.fall_velocity = 5
 		self.img = img
 
@@ -44,8 +47,6 @@ class Cherry():
 
 class Player():
 	def __init__(self,img):
-		self.x=STARTING_X
-		self.y=STARTING_Y
 		self.rect=pg.Rect(STARTING_X, STARTING_Y, IMG_WIDTH, IMG_HEIGHT)
 		self.score=0
 		self.velocity=15
@@ -53,27 +54,27 @@ class Player():
 		self.img=img
 
 	def move_right(self,fast):
-		if self.x+IMG_WIDTH+20 < 1920:
+		if self.rect.x+IMG_WIDTH+20 < 1920:
 			if not fast:
-				self.x+=self.velocity
+				self.rect.x+=self.velocity
 			else:
-				self.x+=self.fast_velocity
+				self.rect.x+=self.fast_velocity
 
 	def move_left(self,fast):
-		if self.x-20 > 0:
+		if self.rect.x-20 > 0:
 			if not fast:
-				self.x-=self.velocity
+				self.rect.x-=self.velocity
 			else:
-				self.x-=self.fast_velocity
+				self.rect.x-=self.fast_velocity
 
 	def draw(self):
-		screen.blit(self.img, (self.x, self.y))
+		screen.blit(self.img, (self.rect.x, self.rect.y))
 
 def draw_window(player,entity_list):
 	screen.fill(MONOKAI_BACKGROUND)
 	for ent in entity_list:
-		ent.draw()
 		ent.fall()
+		ent.draw()
 	player.draw()
 	pg.display.update()
 
@@ -81,17 +82,17 @@ def main():
 	run = True
 	clock = pg.time.Clock()
 	player = Player(batu_img)
+
+	# SPAWN CHERRY FREQUENCY
+	SPAWNEVENT = pg.USEREVENT+1
+	SPAWN_RATE = 1000
+	pg.time.set_timer(SPAWNEVENT, SPAWN_RATE)
 	entity_list = []
-	cher1 = Cherry(cherry_img)
-	entity_list.append(cher1)
 
 	while (run):
 		clock.tick(FPS)
-		draw_window(player,entity_list)
 
 		keys_pressed = pg.key.get_pressed()
-
-		print(player.rect.x)
 
 		# Horizantally movement
 		if (keys_pressed[pg.K_a] or keys_pressed[pg.K_LEFT]):
@@ -103,7 +104,21 @@ def main():
 			player.move_left(1)
 		elif (keys_pressed[pg.K_d] or keys_pressed[pg.K_RIGHT]) and keys_pressed[pg.K_LSHIFT]:
 			player.move_right(1)		
-		
+
+
+		# Collecting Cherry
+		for ent in entity_list:
+			if(player.rect.colliderect(ent.rect)):
+				entity_list.remove(ent)
+				player.score +=1
+				SPAWN_RATE -= player.score *10
+				del ent
+
+		# Game Over
+		for ent in entity_list:
+			if(ent.rect.bottom == 1080):
+				print("GAME OVER")
+				run = False
 
 		for event in pg.event.get():
 			if (event.type == pg.QUIT):
@@ -114,6 +129,12 @@ def main():
 				if (event.key == pg.K_ESCAPE):
 					run = False
 					return 0
+
+			if event.type == pg.USEREVENT+1:
+				cher = Cherry(cherry_img, random.randrange(0,1856, +10))
+				entity_list.append(cher)
+
+		draw_window(player,entity_list)
 
 if __name__ == '__main__':
 	main()
