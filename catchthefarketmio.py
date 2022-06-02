@@ -49,6 +49,8 @@ class Player():
 	def __init__(self,img):
 		self.rect=pg.Rect(STARTING_X, STARTING_Y, IMG_WIDTH, IMG_HEIGHT)
 		self.score=0
+		self.scoreFont=pg.font.SysFont("Calibri", 35)
+		self.gameOverFont=pg.font.SysFont("Calibri", 100)
 		self.velocity=15
 		self.fast_velocity=20
 		self.img=img
@@ -76,23 +78,34 @@ def draw_window(player,entity_list):
 		ent.fall()
 		ent.draw()
 	player.draw()
+	screen.blit(player.scoreFont.render("SCORE = {}".format(player.score), 1, RED), (0,0))
 	pg.display.update()
 
 def main():
 	run = True
 	clock = pg.time.Clock()
 	player = Player(batu_img)
+	entity_list = []
 
 	# SPAWN CHERRY FREQUENCY
-	SPAWNEVENT = pg.USEREVENT+1
+	SPAWNEVENT = pg.event.Event(pg.USEREVENT+1)
 	SPAWN_RATE = 1000
-	pg.time.set_timer(SPAWNEVENT, SPAWN_RATE)
-	entity_list = []
+	LEVELUP_RATE = 10
+	lastSpawnTime = 0
+	pg.event.post(SPAWNEVENT)
+
+	# SCOREBOARD
+
 
 	while (run):
 		clock.tick(FPS)
-
 		keys_pressed = pg.key.get_pressed()
+		
+		# Timer for spawning cherries
+		lastSpawnTime += clock.get_time()
+		if lastSpawnTime >= SPAWN_RATE:
+			pg.event.post(SPAWNEVENT)
+			lastSpawnTime = 0
 
 		# Horizantally movement
 		if (keys_pressed[pg.K_a] or keys_pressed[pg.K_LEFT]):
@@ -105,20 +118,24 @@ def main():
 		elif (keys_pressed[pg.K_d] or keys_pressed[pg.K_RIGHT]) and keys_pressed[pg.K_LSHIFT]:
 			player.move_right(1)		
 
-
 		# Collecting Cherry
 		for ent in entity_list:
 			if(player.rect.colliderect(ent.rect)):
 				entity_list.remove(ent)
 				player.score +=1
-				SPAWN_RATE -= player.score *10
+				if player.score % LEVELUP_RATE == 0:
+					if not SPAWN_RATE - 50 < 100:
+						SPAWN_RATE -= 50
 				del ent
 
 		# Game Over
 		for ent in entity_list:
 			if(ent.rect.bottom == 1080):
-				print("GAME OVER")
+				screen.blit(player.gameOverFont.render("GAME OVER", 1, RED), (1920/2,1080/2))
+				pg.display.update()
+				pg.time.wait(5000)
 				run = False
+				return 0
 
 		for event in pg.event.get():
 			if (event.type == pg.QUIT):
